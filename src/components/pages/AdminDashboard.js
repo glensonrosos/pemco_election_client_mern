@@ -24,12 +24,19 @@ const AdminDashboard = () => {
   const [registrationStatusLoading, setRegistrationStatusLoading] = useState(true);
 
   // Action loading state (extended)
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [importFeedback, setImportFeedback] = useState(null); // { type, message, details: {importedCount, skippedCount, errorCount, errors} }
+
   const [actionLoading, setActionLoading] = useState({
     openVoting: false,
     closeVoting: false,
     clearDatabase: false,
     enableRegistration: false,
     disableRegistration: false,
+    importVoters: false,
+    exportingVoters: false,
+    exportingAdmins: false,
+    deletingAllVoters: false,
   });
 
   const [feedback, setFeedback] = useState(null); // { type: 'success' | 'error', message: string }
@@ -120,6 +127,104 @@ const AdminDashboard = () => {
     }
   };
 
+
+  const handleFileChange = (event) => {
+    setSelectedFile(event.target.files[0]);
+    setImportFeedback(null); // Clear previous feedback when a new file is selected
+  };
+
+  const handleImportVoters = async () => {
+    if (!selectedFile) {
+      setImportFeedback({ type: 'error', message: 'Please select an Excel file to import.' });
+      return;
+    }
+
+    setActionLoading(prev => ({ ...prev, importVoters: true }));
+    setImportFeedback(null);
+
+    try {
+      const response = await adminService.importVoters(selectedFile);
+      setImportFeedback({
+        type: 'success',
+        message: response.message || 'Voter import process completed.',
+        details: {
+          importedCount: response.importedCount,
+          skippedCount: response.skippedCount,
+          errorCount: response.errorCount,
+          errors: response.errors || []
+        }
+      });
+      setSelectedFile(null); // Clear the file input after successful import
+      const fileInput = document.getElementById('voter-import-file-input');
+      if (fileInput) {
+        fileInput.value = null; // Attempt to reset file input
+      }
+    } catch (error) {
+      setImportFeedback({
+        type: 'error',
+        message: error.message || 'Failed to import voters.',
+        details: error.response?.data?.errors ? { errors: error.response.data.errors } : (error.errors ? { errors: error.errors } : null)
+      });
+    } finally {
+      setActionLoading(prev => ({ ...prev, importVoters: false }));
+    }
+  };
+
+  // Original handleDisableRegistration was targeted, so we re-declare it before this comment to avoid removing it.
+  const handleExportVoters = async () => {
+    setActionLoading(prev => ({ ...prev, exportingVoters: true }));
+    setFeedback(null); // Clear previous general feedback
+    setImportFeedback(null); // Clear import-specific feedback
+    try {
+      const result = await adminService.exportVoters();
+      if (result.success) {
+        setFeedback({ type: 'success', message: result.message || 'Voter export initiated successfully.' });
+      } else {
+        setFeedback({ type: 'error', message: result.message || 'Failed to export voters.' });
+      }
+    } catch (error) {
+      // This catch block might be redundant if adminService.exportVoters already catches and returns a message
+      setFeedback({ type: 'error', message: error.message || 'An unexpected error occurred during export.' });
+    }
+    setActionLoading(prev => ({ ...prev, exportingVoters: false }));
+  };
+
+  const handleExportAdminUsers = async () => {
+    setActionLoading(prev => ({ ...prev, exportingAdmins: true }));
+    setFeedback(null);
+    setImportFeedback(null);
+    try {
+      const result = await adminService.exportAdminUsers();
+      if (result.success) {
+        setFeedback({ type: 'success', message: result.message || 'Admin users export initiated successfully.' });
+      } else {
+        setFeedback({ type: 'error', message: result.message || 'Failed to export admin users.' });
+      }
+    } catch (error) {
+      setFeedback({ type: 'error', message: error.message || 'An unexpected error occurred during admin export.' });
+    }
+    setActionLoading(prev => ({ ...prev, exportingAdmins: false }));
+  };
+
+  const handleDeleteAllVoters = async () => {
+    if (window.confirm('Are you sure you want to delete ALL voters? This action cannot be undone and will remove all users with the role \'user\'.')) {
+      setActionLoading(prev => ({ ...prev, deletingAllVoters: true }));
+      setFeedback(null);
+      setImportFeedback(null);
+      try {
+        const result = await adminService.deleteAllVoters();
+        if (result.success) {
+          setFeedback({ type: 'success', message: result.message || 'All voters deleted successfully.' });
+        } else {
+          setFeedback({ type: 'error', message: result.message || 'Failed to delete all voters.' });
+        }
+      } catch (error) {
+        setFeedback({ type: 'error', message: error.message || 'An unexpected error occurred while deleting voters.' });
+      }
+      setActionLoading(prev => ({ ...prev, deletingAllVoters: false }));
+    }
+  };
+
   const handleDisableRegistration = () => {
     if (window.confirm('Are you sure you want to disable user registration? This will prevent new users from signing up.')) {
       handleAdminAction('disableRegistration', adminService.disableRegistration, 'User registration disabled successfully.');
@@ -193,6 +298,86 @@ const AdminDashboard = () => {
         </Grid>
 
         <Typography variant="h5" component="h2" gutterBottom sx={{mt: 4}}>
+          User & Voter Management
+        </Typography>
+        <Card sx={{ mb: 3, p: 2 }}>
+          <CardContent>
+            <Typography variant="h6" component="h3" gutterBottom>
+              Import Voters from Excel
+            </Typography>
+            <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }} alignItems="center">
+              <Button variant="contained" component="label" disabled={actionLoading.importVoters || isVotingOpen}>
+                Choose File
+                <input id="voter-import-file-input" type="file" hidden accept=".xlsx, .xls" onChange={handleFileChange} />
+              </Button>
+              {selectedFile && <Typography variant="body2">{selectedFile.name}</Typography>}
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={handleImportVoters} 
+                disabled={!selectedFile || actionLoading.importVoters || isVotingOpen}
+                sx={{minWidth: '120px'}}
+              >
+                {actionLoading.importVoters ? <CircularProgress size={24} color="inherit" /> : 'Import Voters'}
+              </Button>
+              <Button 
+                variant="outlined" 
+                color="secondary" 
+                onClick={handleExportVoters} 
+                disabled={actionLoading.exportingVoters || isVotingOpen}
+                sx={{minWidth: '130px'}}
+              >
+                {actionLoading.exportingVoters ? <CircularProgress size={24} color="inherit" /> : 'Export Voters'}
+              </Button>
+              <Button 
+                variant="outlined" 
+                color="info" 
+                onClick={handleExportAdminUsers} 
+                disabled={actionLoading.exportingAdmins || isVotingOpen}
+                sx={{minWidth: '140px'}}
+              >
+                {actionLoading.exportingAdmins ? <CircularProgress size={24} color="inherit" /> : 'Export Admins'}
+              </Button>
+            </Stack>
+            {importFeedback && (
+              <Box sx={{ mt: 2 }}>
+                <Alert severity={importFeedback.type} onClose={() => setImportFeedback(null)}>
+                  {importFeedback.message}
+                  {importFeedback.details && (
+                    <Box sx={{ mt: 1}}>
+                      {typeof importFeedback.details.importedCount === 'number' && <Typography variant="body2">Imported: {importFeedback.details.importedCount}</Typography>}
+                      {typeof importFeedback.details.skippedCount === 'number' && <Typography variant="body2">Skipped: {importFeedback.details.skippedCount}</Typography>}
+                      {typeof importFeedback.details.errorCount === 'number' && <Typography variant="body2">Errors: {importFeedback.details.errorCount}</Typography>}
+                      {importFeedback.details.errors && importFeedback.details.errors.length > 0 && (
+                        <Box sx={{ maxHeight: '150px', overflowY: 'auto', mt: 1, border: '1px solid', borderColor: 'divider', p:1 }}>
+                          <Typography variant="caption" display="block" gutterBottom>Error Details:</Typography>
+                          <ul>
+                            {importFeedback.details.errors.map((err, index) => (
+                              <li key={index}><Typography variant="caption">{typeof err === 'string' ? err : JSON.stringify(err)}</Typography></li>
+                            ))}
+                          </ul>
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+                </Alert>
+              </Box>
+            )}
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+              <Button 
+                variant="contained" 
+                color="error" 
+                onClick={handleDeleteAllVoters} 
+                disabled={actionLoading.deletingAllVoters || isVotingOpen}
+                sx={{minWidth: '160px'}}
+              >
+                {actionLoading.deletingAllVoters ? <CircularProgress size={24} color="inherit" /> : 'Delete All Voters'}
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Typography variant="h5" component="h2" gutterBottom sx={{mt: 4}}>
           Candidate Management
         </Typography>
         <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
@@ -217,5 +402,4 @@ const AdminDashboard = () => {
     </Container>
   );
 };
-
 export default AdminDashboard;

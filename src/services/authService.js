@@ -63,11 +63,38 @@ const getCurrentUserToken = () => {
 
 // You can add more auth-related functions here, e.g., getCurrentUserProfile, refreshToken, etc.
 
+/**
+ * Changes the current user's password.
+ * @param {object} passwordData - Object containing { currentPassword, newPassword, newPasswordConfirm }
+ * @returns {Promise<object>} Promise resolving to the server response data.
+ */
+const changePassword = async (passwordData) => {
+  try {
+    const token = getCurrentUserToken();
+    if (!token) {
+      throw new Error('No token found. Please log in.');
+    }
+    const response = await axios.patch(`${API_URL}/change-password`, passwordData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    // If password change is successful, backend sends a new token
+    if (response.data && response.data.token) {
+      localStorage.setItem('userToken', response.data.token);
+    }
+    return response.data;
+  } catch (error) {
+    throw error.response ? error.response.data : new Error('Password change failed');
+  }
+};
+
 const authService = {
   register,
   login,
   logout,
   getCurrentUserToken,
+  changePassword, // Add new function here
 };
 
 export default authService;

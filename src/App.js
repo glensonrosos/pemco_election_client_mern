@@ -19,6 +19,7 @@ import CandidateRegistration from './components/admin/CandidateRegistration'; //
 import CandidateList from './components/admin/CandidateList'; // Import CandidateList
 import EditCandidate from './components/admin/EditCandidate'; // Import EditCandidate
 import AdminPositionsPage from './components/admin/AdminPositionsPage'; // Import AdminPositionsPage
+import ChangePasswordPage from './components/auth/ChangePasswordPage'; // Import ChangePasswordPage
 
 // Basic theme for Material-UI
 const theme = createTheme({
@@ -59,6 +60,7 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/vote" element={<VotingPage />} />
               <Route path="/results" element={<ResultsPage />} />
+              <Route path="/change-password" element={<ChangePasswordPage />} /> {/* Add ChangePasswordPage route */}
             </Route>
 
             {/* Routes accessible only to admin users */}

@@ -78,6 +78,7 @@ const Layout = ({ children }) => {
                     user.role === 'admin' && (
                       <MenuItem key="admin" component={RouterLink} to="/admin" onClick={handleMobileMenuClose}>Admin Dashboard</MenuItem>
                     ),
+                    <MenuItem key="change-password" component={RouterLink} to="/change-password" onClick={handleMobileMenuClose}>Change Password</MenuItem>,
                     <MenuItem key="logout" onClick={() => { handleLogout(); handleMobileMenuClose(); }}>Logout</MenuItem>
                   ]
                 ) : (
@@ -97,19 +98,20 @@ const Layout = ({ children }) => {
             <>
               <Typography sx={{ mr: 2 }}>Welcome, {user.firstName}!</Typography>
               {/* Basic navigation links - can be expanded based on role */}
-              <Button color="inherit" component={RouterLink} to="/vote">Vote</Button>
-              <Button color="inherit" component={RouterLink} to="/results">Results</Button>
+              <Button color="inherit" variant="outlined" component={RouterLink} to="/vote" sx={{ mr: 1 }}>Vote</Button>
+              <Button color="inherit" variant="outlined" component={RouterLink} to="/results" sx={{ mr: 1 }}>Results</Button>
               {user.role === 'admin' && (
-                <Button color="inherit" component={RouterLink} to="/admin">Admin Dashboard</Button>
+                <Button color="inherit" variant="outlined" component={RouterLink} to="/admin" sx={{ mr: 1 }}>Admin Dashboard</Button>
               )}
-              <Button color="inherit" onClick={handleLogout}>Logout</Button>
+              <Button color="inherit" variant="outlined" component={RouterLink} to="/change-password" sx={{ mr: 1 }}>Change Password</Button>
+              <Button color="inherit" variant="outlined" onClick={handleLogout}>Logout</Button>
             </>
           ) : (
             <>
-              <Button color="inherit" component={RouterLink} to="/login">
+              <Button color="inherit" variant="outlined" component={RouterLink} to="/login" sx={{ mr: 1 }}>
                 Login
               </Button>
-              <Button color="inherit" component={RouterLink} to="/register">
+              <Button color="inherit" variant="outlined" component={RouterLink} to="/register">
                 Register
               </Button>
             </>
